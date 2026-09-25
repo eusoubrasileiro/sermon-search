@@ -47,14 +47,16 @@ work/
 # Validators, Playwright probes and UI reviewers are SUPPOSED to render these;
 # they must never enter git. Denied by location rather than by filename prefix,
 # because every new agent invents a new filename and prefix lists always lose.
-# This repo has no source images today, so a full extension deny is safe — if
-# one is ever added, scope an exception rather than dropping the rule.
+# The deny stays total; source images get a scoped exception below, never a
+# dropped rule.
 *.png
 *.jpg
 *.jpeg
 *.gif
 *.webp
 *.pdf
+# The one scoped exception: README screenshots, curated by hand.
+!docs/images/*.png
 **/screenshots/
 **/.playwright-mcp/
 test-results/

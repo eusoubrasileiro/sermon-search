@@ -1,0 +1,12 @@
+sermon-search
+Copyright (c) 2024-2026 André (eusoubrasileiro)
+
+The source code in this repository is licensed under the MIT License (see
+LICENSE).
+
+The MIT License does NOT cover the sermon corpus under data/ — the transcripts,
+their metadata, and the facets derived from them. Those are transcriptions of
+sermons preached at Igreja Presbiteriana Peregrinos (https://ipperegrinos.com),
+publicly available on the church's SoundCloud and Spotify channels. They remain
+the church's and are included here only as the data this deployment searches.
+Deploying the code for another church means replacing data/ with its own corpus.

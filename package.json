@@ -1,9 +1,10 @@
 {
-  "name": "ipp-sermons",
+  "name": "sermon-search",
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Busca de sermões da Igreja Presbiteriana Peregrinos — hybrid search over transcribed sermons",
+  "description": "Hybrid semantic + lexical search over a church's transcribed sermon archive",
+  "license": "MIT",
   "engines": {
     "node": ">=24"
   },
