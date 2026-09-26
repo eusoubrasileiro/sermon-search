@@ -38,6 +38,10 @@ WORK="${IPP_WORK_DIR:-/mnt/Data/ipp-sermons-work}"
 VENV="${IPP_VENV_DIR:-/mnt/Data/venv/ipp-sermons}"
 REMOTE=hostinger
 REMOTE_DIR=/opt/amiticia/ipp-sermons
+# The VPS runs a checkout of this repo from deploy/, with .env beside the compose
+# file (standards/deployment.md). Never compose from the checkout root: that is
+# the DEV docker-compose.yml, with no .env.
+DEPLOY_DIR="$REMOTE_DIR/deploy"
 IMAGE=ghcr.io/eusoubrasileiro/ipp-sermons
 SITE=https://ipp-sermons.amiticia.cc
 PREV_TAG_FILE="$WORK/.previous-image-tag"
@@ -222,15 +226,20 @@ stage_release() {
   docker push "$IMAGE:$sha"
   docker push "$IMAGE:latest"
 
-  # The VPS holds this file, .env and sql/ and no checkout, so both got there by
-  # hand and match the repo only by luck. Mirror them instead.
-  say "sync -> $REMOTE:$REMOTE_DIR"
-  prev=$(ssh "$REMOTE" "grep '^IMAGE_TAG=' $REMOTE_DIR/.env | cut -d= -f2" || true)
+  # The VPS is a checkout, so the compose file and the migrations the `migrate`
+  # sidecar mounts (../backend/prisma/sql) arrive by pulling the commit this
+  # image was built from. --ff-only, and only on a clean tree: an edit made on
+  # the box is refused here rather than merged into a release unseen.
+  say "pull -> $REMOTE:$REMOTE_DIR"
+  prev=$(ssh "$REMOTE" "grep '^IMAGE_TAG=' $DEPLOY_DIR/.env | cut -d= -f2" || true)
   printf '%s\n' "${prev:-latest}" > "$PREV_TAG_FILE"
-  rsync -a deploy/docker-compose.yml "$REMOTE:$REMOTE_DIR/docker-compose.yml"
-  # --delete because the migrate sidecar loops over /sql/*.sql: a stale file left
-  # behind is a migration that runs on every deploy, forever.
-  rsync -a --delete backend/prisma/sql/ "$REMOTE:$REMOTE_DIR/sql/"
+  ssh "$REMOTE" "set -e
+    [ -z \"\$(git -C $REMOTE_DIR status --porcelain --untracked-files=no)\" ] ||
+      { echo 'the VPS checkout has local edits; refusing to pull' >&2; exit 1; }
+    git -C $REMOTE_DIR pull --ff-only -q
+    [ \"\$(git -C $REMOTE_DIR rev-parse HEAD)\" = $(git rev-parse HEAD) ] ||
+      { echo 'the VPS checkout is not at $sha after pulling' >&2; exit 1; }" ||
+    die "could not bring $REMOTE:$REMOTE_DIR to $sha"
 
   say "deploy $sha  (migrate -> index -> facets -> app)"
   deploy_tag "$sha"
@@ -250,7 +259,7 @@ wait_for_site() {
 }
 
 deploy_tag() {
-  ssh "$REMOTE" "set -e; cd $REMOTE_DIR
+  ssh "$REMOTE" "set -e; cd $DEPLOY_DIR
     cp -n .env .env.bak-\$(grep '^IMAGE_TAG=' .env | cut -d= -f2) 2>/dev/null || true
     if grep -q '^IMAGE_TAG=' .env
       then sed -i 's|^IMAGE_TAG=.*|IMAGE_TAG=$1|' .env

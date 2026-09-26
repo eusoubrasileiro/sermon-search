@@ -211,8 +211,10 @@ the gate to agree with the code.
 ## Deployment
 
 Image `ghcr.io/eusoubrasileiro/ipp-sermons` → Hostinger VPS at
-`/opt/amiticia/ipp-sermons/`, which holds only `.env`, `docker-compose.yml` and
-`sql/`. There is no checkout on the VPS. Traefik v3 on the external
+`/opt/amiticia/ipp-sermons/`, a git checkout of this repo that runs
+`deploy/docker-compose.yaml` with `.env` beside it in `deploy/`. A release pulls
+the checkout to the image's commit (`stage_release`); never compose from the
+checkout root, which is the dev file. Traefik v3 on the external
 `network_public` terminates TLS and routes `ipp-sermons.amiticia.cc`.
 
 Five services, in dependency order: `db`, `migrate` (one-shot, applies the

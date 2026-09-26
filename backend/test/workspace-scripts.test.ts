@@ -79,6 +79,26 @@ describe("workspace scripts", () => {
     expect(body.split("\n").filter((l) => l.length > 100)).toEqual([]);
   });
 
+  it("releases into the VPS checkout, from deploy/", () => {
+    // Since 2026-09-01 /opt/amiticia/ipp-sermons is a git checkout running
+    // deploy/docker-compose.yaml with .env beside it. A release that still
+    // rsyncs into the checkout root and runs compose there finds the DEV
+    // compose file and no .env: it starts the wrong stack, or none at all.
+    const sh = readFileSync(join(ROOT, "scripts/corpus-update.sh"), "utf8");
+    const fn = (name: string) =>
+      sh.slice(sh.indexOf(`${name}() {`), sh.indexOf("\n}\n", sh.indexOf(`${name}() {`)));
+    const release = fn("stage_release");
+    const deploy = fn("deploy_tag");
+
+    expect(release).not.toBe("");
+    expect(deploy).not.toBe("");
+    expect(release).not.toMatch(/\brsync\b/);
+    expect(release).toMatch(/git -C "?\$REMOTE_DIR"? pull --ff-only/);
+    expect(release).toMatch(/\$DEPLOY_DIR\/\.env/);
+    expect(deploy).toMatch(/cd "?\$DEPLOY_DIR"?/);
+    expect(sh).toMatch(/^DEPLOY_DIR="?\$REMOTE_DIR\/deploy"?$/m);
+  });
+
   it("names every migration NNN_*.sql", () => {
     // Both the production `migrate` sidecar (`for f in /sql/*.sql`) and
     // db-push.sh (`[0-9][0-9][0-9]_*.sql`) apply these in filename order. A file
